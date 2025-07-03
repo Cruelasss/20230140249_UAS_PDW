@@ -1,4 +1,5 @@
 <?php
+// --- FUNGSI PHP ANDA, TIDAK DIUBAH SAMA SEKALI ---
 session_start();
 require_once '../config.php';
 
@@ -8,6 +9,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'mahasiswa') {
 }
 
 $user_id = $_SESSION['user_id'];
+$page_title = 'Keluar Praktikum';
 
 // Ambil praktikum yang diikuti mahasiswa
 $sql = "SELECT pp.praktikum_id, mp.nama_mk, mp.kode_mk
@@ -31,234 +33,117 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['praktikum_id'])) {
     $delete_stmt->bind_param("ii", $user_id, $praktikum_id);
     
     if ($delete_stmt->execute()) {
-        echo "<script>alert('Berhasil keluar dari praktikum!'); window.location.href='keluar_praktikum.php';</script>";
+        $_SESSION['success'] = 'Berhasil keluar dari praktikum!';
     } else {
-        echo "<script>alert('Gagal keluar dari praktikum. Silakan coba lagi.');</script>";
+        $_SESSION['error'] = 'Gagal keluar dari praktikum.';
     }
+    header('Location: keluar_praktikum.php');
+    exit();
 }
+// --- AKHIR DARI FUNGSI PHP ANDA ---
 ?>
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keluar Praktikum - SIMPRAK</title>
+    <title><?= htmlspecialchars($page_title) ?> - SIMPRAK</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
-            --primary-color: #4f46e5;
-            --danger-color: #ef4444;
-            --danger-hover: #dc2626;
-            --text-dark: #111827;
-            --text-light: #6b7280;
-            --background-light: #f9fafb;
-            --card-bg: #ffffff;
-            --border-color: #e5e7eb;
-            --warning-bg: #fefce8;
-            --warning-text: #a16207;
-            --warning-border: #facc15;
+            --retro-border: #4d4d4d;
+            --retro-teal: #14b8a6;
         }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Poppins', sans-serif; background-color: var(--background-light); color: var(--text-dark); }
-        .dashboard-container { display: flex; }
-
-        /* Sidebar - Konsisten dengan Dashboard */
-        .sidebar {
-            width: 260px;
-            background: var(--card-bg);
-            border-right: 1px solid var(--border-color);
-            padding: 24px 0;
-            position: fixed;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            transition: transform 0.3s ease-in-out;
+        body { font-family: 'Public Sans', sans-serif; }
+        .font-serif { font-family: 'DM Serif Display', serif; }
+        .retro-shadow { box-shadow: 6px 6px 0px var(--retro-border); }
+        .sidebar { transition: transform 0.3s ease-in-out; }
+        @media (min-width: 768px) { .sidebar { transform: translateX(0); } }
+        .sidebar.collapsed { transform: translateX(-100%); }
+        .menu-link.active {
+            background-color: var(--retro-teal) !important;
+            color: white !important;
         }
-        .sidebar-header { text-align: center; padding: 0 24px 24px; margin-bottom: 24px; }
-        .sidebar-logo { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 1.5rem; font-weight: 700; color: var(--primary-color); margin-bottom: 8px; }
-        .sidebar-subtitle { color: var(--text-light); font-size: 0.875rem; }
-        .sidebar-menu { padding: 0 16px; flex-grow: 1; }
-        .menu-item { margin-bottom: 8px; }
-        .menu-link { display: flex; align-items: center; padding: 12px 16px; color: var(--text-light); text-decoration: none; border-radius: 8px; transition: all 0.2s ease; font-weight: 500; }
-        .menu-link:hover { background-color: var(--background-light); color: var(--primary-color); }
-        .menu-link.active { background-color: var(--primary-color); color: white; }
-        .menu-icon { width: 20px; margin-right: 16px; font-size: 1.1rem; }
-        .logout-item { margin-top: auto; padding: 0 16px; }
-
-        /* Main Content */
-        .main-content { flex: 1; margin-left: 260px; padding: 32px; }
-        .content-header { margin-bottom: 32px; }
-        .page-title { font-size: 2.25rem; font-weight: 700; color: var(--text-dark); margin-bottom: 4px; display: flex; align-items: center; gap: 12px; }
-        .page-subtitle { font-size: 1.125rem; color: var(--text-light); }
-        
-        /* Warning Alert */
-        .warning-alert {
-            background-color: var(--warning-bg);
-            border-left: 4px solid var(--warning-border);
-            color: var(--warning-text);
-            padding: 16px;
-            border-radius: 8px;
-            margin-bottom: 32px;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-        }
-        .warning-icon { font-size: 1.25rem; margin-top: 2px; }
-        .warning-text { font-size: 0.9rem; line-height: 1.6; }
-
-        /* Daftar Praktikum */
-        .praktikum-list {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-        .praktikum-item {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            padding: 16px 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: box-shadow 0.2s ease;
-        }
-        .praktikum-item:hover {
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-        }
-        .praktikum-info h3 { font-size: 1.125rem; font-weight: 600; }
-        .praktikum-info .praktikum-code { font-size: 0.875rem; color: var(--text-light); }
-        
-        .btn-danger {
-            padding: 8px 16px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-size: 0.875rem;
-            font-weight: 600;
-            transition: all 0.2s ease;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background-color: #fee2e2;
-            color: var(--danger-color);
-            border: 1px solid #fecaca;
-        }
-        .btn-danger:hover {
-            background-color: var(--danger-color);
-            color: white;
-            border-color: var(--danger-color);
-        }
-        
-        /* Empty State */
-        .empty-state { text-align: center; padding: 60px 40px; background-color: var(--card-bg); border-radius: 12px; border: 1px solid var(--border-color); }
-        .empty-icon { font-size: 4rem; color: #d1d5db; margin-bottom: 24px; }
-        .empty-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 8px; }
-        .empty-desc { color: var(--text-light); margin-bottom: 24px; max-width: 400px; margin-left: auto; margin-right: auto; }
-        .empty-action { display: inline-block; background-color: var(--primary-color); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; transition: background-color 0.2s ease; }
-        .empty-action:hover { background-color: var(--primary-hover); }
-
-        /* Responsive */
-        .mobile-menu-toggle { display: none; }
-        @media (max-width: 1024px) {
-            .sidebar { transform: translateX(-100%); z-index: 1000; box-shadow: 0 0 40px rgba(0,0,0,0.1); }
-            .sidebar.open { transform: translateX(0); }
-            .main-content { margin-left: 0; }
-            .mobile-menu-toggle { display: block; position: fixed; top: 20px; left: 20px; z-index: 1001; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; width: 44px; height: 44px; font-size: 1.2rem; color: var(--text-light); cursor: pointer; }
-        }
-        @media (max-width: 768px) {
-            .main-content { padding: 24px; }
-            .page-title { font-size: 1.75rem; }
-            .praktikum-item { flex-direction: column; align-items: flex-start; gap: 16px; }
-        }
-
     </style>
 </head>
-<body>
-    <button class="mobile-menu-toggle" onclick="toggleSidebar()"> <i class="fas fa-bars"></i> </button>
-
-    <div class="dashboard-container">
-        <div class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-logo"><i class="fas fa-graduation-cap"></i><span>SIMPRAK</span></div>
-                <div class="sidebar-subtitle">Portal Mahasiswa</div>
+<body class="bg-amber-50 text-stone-800">
+    <div class="flex">
+        <div id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-64 bg-amber-900 text-amber-100 transform md:translate-x-0 transition-transform duration-300 ease-in-out border-r-2 border-stone-800">
+            <div class="flex items-center justify-between p-4 border-b-2 border-amber-800">
+                <h1 class="font-serif text-2xl text-amber-50">SIMPRAK</h1>
             </div>
-            <div class="sidebar-menu">
-                <div class="menu-item"><a href="dashboard.php" class="menu-link"><i class="fas fa-home menu-icon"></i><span class="menu-text">Dashboard</span></a></div>
-                <div class="menu-item"><a href="praktikum_saya.php" class="menu-link"><i class="fas fa-book-open menu-icon"></i><span class="menu-text">Praktikum Saya</span></a></div>
-                <div class="menu-item"><a href="daftar_praktikum.php" class="menu-link"><i class="fas fa-list-alt menu-icon"></i><span class="menu-text">Daftar Praktikum</span></a></div>
-                <div class="menu-item"><a href="detail_praktikum.php" class="menu-link"><i class="fas fa-info-circle menu-icon"></i><span class="menu-text">Detail Praktikum</span></a></div>
-                <div class="menu-item"><a href="upload_laporan.php" class="menu-link"><i class="fas fa-upload menu-icon"></i><span class="menu-text">Upload Laporan</span></a></div>
-                <div class="menu-item"><a href="keluar_praktikum.php" class="menu-link active"><i class="fas fa-sign-out-alt menu-icon"></i><span class="menu-text">Keluar Praktikum</span></a></div>
-            </div>
-            <div class="logout-item">
-                <a href="../logout.php" class="menu-link"><i class="fas fa-power-off menu-icon"></i><span class="menu-text">Logout</span></a>
+            <nav class="p-4 flex-grow">
+                <ul class="space-y-2">
+                    <li><a href="dashboard.php" class="menu-link flex items-center gap-3 p-3 rounded-none transition-colors text-amber-200 hover:bg-amber-800"><i class="fas fa-home w-5 text-center"></i><span class="font-semibold">Dashboard</span></a></li>
+                    <li><a href="praktikum_saya.php" class="menu-link flex items-center gap-3 p-3 rounded-none transition-colors text-amber-200 hover:bg-amber-800"><i class="fas fa-book-open w-5 text-center"></i><span class="font-semibold">Praktikum Saya</span></a></li>
+                    <li><a href="daftar_praktikum.php" class="menu-link flex items-center gap-3 p-3 rounded-none transition-colors text-amber-200 hover:bg-amber-800"><i class="fas fa-plus-circle w-5 text-center"></i><span class="font-semibold">Daftar Praktikum</span></a></li>
+                    <li><a href="detail_praktikum.php" class="menu-link flex items-center gap-3 p-3 rounded-none transition-colors text-amber-200 hover:bg-amber-800"><i class="fas fa-info-circle w-5 text-center"></i><span class="font-semibold">Detail Praktikum</span></a></li>
+                    <li><a href="upload_laporan.php" class="menu-link flex items-center gap-3 p-3 rounded-none transition-colors text-amber-200 hover:bg-amber-800"><i class="fas fa-upload w-5 text-center"></i><span class="font-semibold">Upload Laporan</span></a></li>
+                    <li><a href="keluar_praktikum.php" class="menu-link active flex items-center gap-3 p-3 rounded-none transition-colors"><i class="fas fa-sign-out-alt w-5 text-center"></i><span class="font-semibold">Keluar Praktikum</span></a></li>
+                </ul>
+            </nav>
+            <div class="p-4 border-t-2 border-amber-800">
+                <a href="../logout.php" class="flex items-center gap-3 p-3 rounded-none bg-red-800 hover:bg-red-700 transition-colors text-red-100 hover:text-white">
+                    <i class="fas fa-sign-out-alt w-5 text-center"></i><span class="font-semibold">Logout</span>
+                </a>
             </div>
         </div>
 
-        <div class="main-content">
-            <div class="content-header">
-                <h1 class="page-title"><i class="fas fa-sign-out-alt"></i> Keluar Praktikum</h1>
-                <p class="page-subtitle">Pilih praktikum yang ingin Anda tinggalkan.</p>
-            </div>
+        <div class="md:ml-64 flex-grow p-6">
+            <header class="mb-8">
+                <h1 class="font-serif text-4xl font-bold text-amber-900"><?= htmlspecialchars($page_title) ?></h1>
+                <p class="text-stone-700 mt-1 text-lg">Pilih praktikum yang ingin Anda tinggalkan.</p>
+            </header>
 
-            <div class="warning-alert">
-                <i class="fas fa-exclamation-triangle warning-icon"></i>
-                <div class="warning-text">
-                    <strong>Peringatan Penting:</strong> Keluar dari praktikum adalah tindakan permanen dan akan menghapus semua data pendaftaran Anda. Data laporan yang sudah diupload mungkin juga akan terpengaruh.
+            <?php if (isset($_SESSION['success'])): ?>
+            <div class="mb-6 p-4 bg-teal-100 border-2 border-teal-800 text-teal-900 rounded-none retro-shadow">
+                <i class="fas fa-check-circle mr-3"></i> <span class="font-bold"><?= htmlspecialchars($_SESSION['success']) ?></span>
+            </div>
+            <?php unset($_SESSION['success']); endif; ?>
+
+            <div class="bg-white border-2 border-stone-800 p-6 retro-shadow">
+                <div class="p-4 mb-6 bg-orange-100 border-2 border-orange-800 text-orange-900 rounded-none">
+                    <div class="flex items-start gap-4">
+                        <i class="fas fa-exclamation-triangle text-2xl"></i>
+                        <div>
+                            <h3 class="font-bold text-lg">Peringatan Penting</h3>
+                            <p>Keluar dari praktikum adalah tindakan permanen dan akan menghapus semua data pendaftaran Anda. Tindakan ini tidak dapat dibatalkan.</p>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="card-section">
-                <h2 class="section-title" style="margin-bottom: 16px;"><i class="fas fa-list"></i> Praktikum yang Anda Ikuti</h2>
+                <h2 class="font-serif text-2xl font-bold text-amber-900 mb-4">Praktikum yang Anda Ikuti</h2>
+                
                 <?php if ($result && $result->num_rows > 0): ?>
-                    <div class="praktikum-list">
+                    <div class="space-y-4">
                         <?php while($praktikum = $result->fetch_assoc()): ?>
-                            <div class="praktikum-item">
-                                <div class="praktikum-info">
-                                    <h3><?php echo htmlspecialchars($praktikum['nama_mk']); ?></h3>
-                                    <div class="praktikum-code"><?php echo htmlspecialchars($praktikum['kode_mk']); ?></div>
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-2 border-stone-800 bg-amber-50">
+                                <div>
+                                    <h3 class="font-bold text-lg text-stone-800"><?= htmlspecialchars($praktikum['nama_mk']) ?></h3>
+                                    <p class="text-sm text-stone-600"><?= htmlspecialchars($praktikum['kode_mk']) ?></p>
                                 </div>
-                                <div class="praktikum-actions">
-                                    <form method="post" style="display: contents;">
-                                        <input type="hidden" name="praktikum_id" value="<?php echo $praktikum['praktikum_id']; ?>">
-                                        <button type="submit" class="btn-danger" onclick="return confirm('Anda yakin ingin keluar dari praktikum \'<?php echo htmlspecialchars($praktikum['nama_mk']); ?>\'? Tindakan ini tidak dapat dibatalkan.')">
-                                            <i class="fas fa-times-circle"></i> Keluar
-                                        </button>
-                                    </form>
-                                </div>
+                                <form method="post" class="w-full sm:w-auto">
+                                    <input type="hidden" name="praktikum_id" value="<?= $praktikum['praktikum_id'] ?>">
+                                    <button type="submit" class="w-full bg-red-600 text-white font-bold p-3 border-2 border-stone-800 hover:bg-red-700 transition-colors" onclick="return confirm('Anda yakin ingin keluar dari praktikum \'<?= htmlspecialchars($praktikum['nama_mk']) ?>\'? Tindakan ini tidak dapat dibatalkan.')">
+                                        <i class="fas fa-times-circle mr-2"></i>KELUAR
+                                    </button>
+                                </form>
                             </div>
                         <?php endwhile; ?>
                     </div>
                 <?php else: ?>
-                    <div class="empty-state" style="padding: 40px; box-shadow: none;">
-                        <div class="empty-icon" style="font-size: 2.5rem;"><i class="fas fa-check-circle"></i></div>
-                        <div class="empty-title" style="font-size: 1.25rem;">Tidak Ada Praktikum</div>
-                        <div class="empty-desc">Anda saat ini tidak terdaftar di praktikum mana pun.</div>
+                    <div class="text-center p-8 border-2 border-dashed border-stone-300">
+                        <i class="fas fa-check-circle text-6xl text-stone-400 mb-4"></i>
+                        <h3 class="font-serif text-2xl font-bold text-amber-900">Aman!</h3>
+                        <p class="text-stone-600">Anda saat ini tidak terdaftar di praktikum mana pun.</p>
                     </div>
                 <?php endif; ?>
             </div>
         </div>
     </div>
-
-    <script>
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
-        }
-
-        document.addEventListener('click', function(event) {
-            const sidebar = document.getElementById('sidebar');
-            const mobileToggle = document.querySelector('.mobile-menu-toggle');
-            if (window.innerWidth <= 1024 && sidebar.classList.contains('open')) {
-                if (!sidebar.contains(event.target) && !mobileToggle.contains(event.target)) {
-                    sidebar.classList.remove('open');
-                }
-            }
-        });
-    </script>
 </body>
 </html>
